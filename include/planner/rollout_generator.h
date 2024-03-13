@@ -212,6 +212,15 @@ public:
     : id(0), w(0), l(0), h(0), start_time(start_time) {}
 };
 
+class TimeDetectedObject : public rclcpp::Node {
+public:
+    TimeDetectedObject() : Node("TimeDetectedObject") {
+        // 여기에서 DetectedObject 객체를 생성합니다.
+        auto current_time = this->now(); // 현재 시간을 얻습니다.
+        DetectedObject obj(current_time); // 객체 생성 시 현재 시간을 전달합니다.
+    }
+};
+
 class TrajectoryCost {
 public:
     int index;

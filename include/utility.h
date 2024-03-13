@@ -16,6 +16,11 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "nav2_core/global_planner.h"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav2_costmap_2d/costmap_2d_ros.hpp"
+#include <memory>
+
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>

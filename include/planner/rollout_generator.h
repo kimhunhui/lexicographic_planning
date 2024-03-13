@@ -438,25 +438,23 @@ int getNextClosePointIndex(const vector<UtilityNS::WayPoint>& trajectory,
  * @return: 
  */
 void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane, 
-                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane)
-{
-    if (pub_testLane.getNumSubscribers() == 0)
+                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane) {
+    if (pub_testLane->get_subscription_count() == 0) // ROS2에서는 getNumSubscribers 대신 get_subscription_count() 사용
         return;
-    visualization_msgs::Marker lane_marker;
+    visualization_msgs::msg::Marker lane_marker;
 
     lane_marker.header.frame_id = "map";
-    lane_marker.header.stamp = this->get_clock()->now();
+    lane_marker.header.stamp = this->get_clock()->now(); // 현재 시간을 this->get_clock()->now()를 사용하여 설정
     lane_marker.ns = "test_lane";
-    lane_marker.type = visualization_msgs::Marker::LINE_STRIP;
-    lane_marker.action = visualization_msgs::Marker::ADD;
+    lane_marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    lane_marker.action = visualization_msgs::msg::Marker::ADD;
     lane_marker.frame_locked = false;
 
     lane_marker.scale.x = 0.02;
-    lane_marker.frame_locked = false;
 
     lane_marker.points.clear();
     for (size_t k = 0; k < lane.size(); k++) {
-        geometry_msgs::Point wp;
+        geometry_msgs::msg::Point wp;
         wp.x = lane[k].pos.x;
         wp.y = lane[k].pos.y;
         wp.z = lane[k].pos.z;
@@ -468,7 +466,7 @@ void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane,
     lane_marker.color.r = 1;
     lane_marker.color.a = 1;
 
-    pub_testLane.publish(lane_marker);
+    pub_testLane->publish(lane_marker);
 }
 
 double calDiffBetweenTwoAngle(const double& a1, const double& a2)

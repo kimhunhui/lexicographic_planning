@@ -774,7 +774,7 @@ void RolloutGenerator::initROS()
  * @param {type} 
  * @return: 
  */
-void RolloutGenerator::run(tf::StampedTransform transform, nav_msgs::Path pathMsg, nav_msgs::Path& fixedGlobal, nav_msgs::Path& centerPath, nav_msgs::Path& remainingPath, vector<nav_msgs::Path>& alternativePaths)
+void RolloutGenerator::run(geometry_msgs::msg::TransformStamped transform, nav_msgs::Path pathMsg, nav_msgs::Path& fixedGlobal, nav_msgs::Path& centerPath, nav_msgs::Path& remainingPath, vector<nav_msgs::Path>& alternativePaths)
 {
     current_pose.pos.x = transform.getOrigin().x();
     current_pose.pos.y = transform.getOrigin().y();

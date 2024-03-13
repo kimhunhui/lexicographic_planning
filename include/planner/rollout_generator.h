@@ -20,7 +20,7 @@ public:
     double x;
     double y;
     double z;
-    double yaw;
+    double yaw = tf2::getYaw(msg_path.poses[i].pose.orientation);
 
     GPSPoint()
     {
@@ -684,8 +684,7 @@ public:
         nav_msgs::Path getRemainingPath(nav_msgs::Path pathIn, nav_msgs::Path centerPath);
         nav_msgs::Path calculatePathYaw(nav_msgs::Path pathIn);
 
-        void run(tf::StampedTransform transform, nav_msgs::Path pathMsg, nav_msgs::Path& fixedGlobal, nav_msgs::Path& centerPath, nav_msgs::Path& remainingPath, vector<nav_msgs::Path>& alternativePaths);
-
+        void run(geometry_msgs::msg::TransformStamped transform, nav_msgs::msg::Path pathMsg, nav_msgs::Path& fixedGlobal, nav_msgs::Path& centerPath, nav_msgs::Path& remainingPath, vector<nav_msgs::Path>& alternativePaths);
         void initROS();
 
         tf::StampedTransform transform;

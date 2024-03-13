@@ -444,7 +444,7 @@ void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane,
     visualization_msgs::Marker lane_marker;
 
     lane_marker.header.frame_id = "map";
-    lane_marker.header.stamp = rclcpp::Time;
+    lane_marker.header.stamp = this->now();
     lane_marker.ns = "test_lane";
     lane_marker.type = visualization_msgs::Marker::LINE_STRIP;
     lane_marker.action = visualization_msgs::Marker::ADD;

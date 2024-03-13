@@ -1,47 +1,83 @@
 #include "utility.h"
 
-class PathServer : public ParamServer
+class PathServer : public rclcpp::Node
 {
 public:
-
-    ros::Timer pathUpdateTimer;
-
-    ros::Publisher pubPathRaw;
-    ros::Publisher pubPathSmooth;
-
-    nav_msgs::Path pathRaw;
-    nav_msgs::Path pathSmooth;
-
-    tf::TransformListener listener;
-    tf::StampedTransform transform;
-
-    PointType robotPoint;
-
-    double radius = 2;
-    double length = 2;
-    double width = radius * 2;
-
-    PathServer()
+    PathServer() : Node("path_server"), tfBuffer(this->get_clock()), tfListener(tfBuffer)
     {
-        pubPathRaw = nh.advertise<nav_msgs::Path> ("planning/server/path_blueprint_raw", 1);
-        pubPathSmooth = nh.advertise<nav_msgs::Path> ("planning/server/path_blueprint_smooth", 1);
+        // ROS2에서는 this->create_publisher<MsgType>("topic", queue_size)를 사용하여 퍼블리셔를 생성합니다.
+        pubPathRaw = this->create_publisher<nav_msgs::msg::Path>("planning/server/path_blueprint_raw", 10);
+        pubPathSmooth = this->create_publisher<nav_msgs::msg::Path>("planning/server/path_blueprint_smooth", 10);
 
-        pathUpdateTimer = nh.createTimer(ros::Duration(1.0), &PathServer::updatePath, this);
+        // ROS2에서는 타이머를 생성할 때 this->create_wall_timer(duration, callback)를 사용합니다.
+        pathUpdateTimer = this->create_wall_timer(
+            std::chrono::seconds(1),
+            std::bind(&PathServer::updatePath, this));
+    }
+
+    nav_msgs::msg::Path pathRaw;
+    nav_msgs::msg::Path pathSmooth;
+
+    geometry_msgs::msg::Point robotPoint; // ROS2에서는 geometry_msgs::msg namespace를 사용합니다.
+    
+    double radius = 2.0;
+    double length = 2.0;
+    double width = radius * 2.0;
+    
+    // 아래의 함수들은 ROS2에서 사용할 수 있도록 수정해야 합니다.
+    // 예를 들어, createPoseStamped 함수는 ROS2 메시지 타입을 사용해야 합니다.
+    geometry_msgs::msg::PoseStamped createPoseStamped(float x, float y, float z)
+    {
+        geometry_msgs::msg::PoseStamped pose;
+        pose.header.frame_id = "map";
+        pose.header.stamp = this->get_clock()->now(); // ROS2에서 현재 시간을 얻는 방법
+        pose.pose.position.x = x;
+        pose.pose.position.y = y;
+        pose.pose.position.z = z;
+        // pose.pose.orientation은 기본적으로 (0, 0, 0, 1)로 초기화됩니다.
+        // 필요에 따라 회전을 적용할 수 있습니다.
+        return pose;
+    }
+
+    PathServer() : Node("PathServer"), tfBuffer(this->get_clock()), tfListener(tfBuffer)
+    {
+        pubPathRaw = this->create_publisher<nav_msgs::msg::Path>("planning/server/path_blueprint_raw", 10);
+        pubPathSmooth = this->create_publisher<nav_msgs::msg::Path>("planning/server/path_blueprint_smooth", 10);
+
+        pathUpdateTimer = this->create_wall_timer(
+            std::chrono::seconds(1),
+            std::bind(&PathServer::updatePath, this));
 
         createPath2();
-    };
-
-    bool getRobotPosition()
-    {
-        try{listener.lookupTransform("map","base_link", ros::Time(0), transform); } 
-        catch (tf::TransformException ex){ /*ROS_ERROR("Transfrom Failure.");*/ return false; }
-        
-        robotPoint.x = transform.getOrigin().x();
-        robotPoint.y = transform.getOrigin().y();
-        robotPoint.z = 0;
-
-        return true;
     }
+
+bool getRobotPosition() {
+    geometry_msgs::msg::TransformStamped transformStamped;
+    try {
+        transformStamped = tfBuffer.lookupTransform("map", "base_link", tf2::TimePointZero);
+    } catch (tf2::TransformException &ex) {
+        RCLCPP_ERROR(this->get_logger(), "Transform failure: %s", ex.what());
+        return false;
+    }
+
+    robotPoint.x = transformStamped.transform.translation.x;
+    robotPoint.y = transformStamped.transform.translation.y;
+    robotPoint.z = 0; // Z 값이 필요한 경우 transformStamped.transform.translation.z 사용
+
+    return true;
+}
+
+private:
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPathRaw;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPathSmooth;
+    rclcpp::TimerBase::SharedPtr pathUpdateTimer;
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tfListener;
+
+    nav_msgs::msg::Path pathRaw;
+    nav_msgs::msg::Path pathSmooth;
+    double width = 4.0; // Example value
+
 
     void createPath1()
     {
@@ -86,15 +122,15 @@ public:
     }
 
 
-    geometry_msgs::PoseStamped createPoseStamped(float x, float y, float z)
+    geometry_msgs::msg::PoseStamped createPoseStamped(float x, float y, float z)
     {
-        geometry_msgs::PoseStamped pose;
+        geometry_msgs::msg::PoseStamped pose;
         pose.header.frame_id = "map";
-        pose.header.stamp = ros::Time::now();
+        pose.header.stamp = this->get_clock()->now();
         pose.pose.position.x = x;
-        pose.pose.position.y = y; 
+        pose.pose.position.y = y;
         pose.pose.position.z = z;
-        pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+        // pose.pose.orientation set to default quaternion, adjust as needed
         return pose;
     }
 
@@ -141,15 +177,11 @@ public:
 };
 
 
-int main(int argc, char** argv){
-
-    ros::init(argc, argv, "lexicographic_planning");
-    
-    PathServer ps;
-
-    ROS_INFO("\033[1;32m----> lexicographic_planning: Path Server Started.\033[0m");
-
-    ros::spin();
-
+int main(int argc, char **argv)
+{
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<PathServer>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
     return 0;
 }

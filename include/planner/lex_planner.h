@@ -2,16 +2,6 @@
 #ifndef LEX_PLANNER_HPP
 #define LEX_PLANNER_HPP
 
-#include "rclcpp/rclcpp.hpp"
-#include "tf2_ros/buffer.h"
-#include "tf2_ros/transform_listener.h"
-#include "nav2_core/global_planner.h"
-#include "nav_msgs/msg/path.hpp"
-#include "geometry_msgs/msg/pose_stamped.hpp"
-#include "nav2_costmap_2d/costmap_2d_ros.hpp"
-#include <mutex>
-#include <memory>
-
 namespace lex_planner {
 
 class LEXPlanner : public nav2_core::GlobalPlanner, public rclcpp::Node {

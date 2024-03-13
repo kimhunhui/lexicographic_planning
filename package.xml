@@ -1,49 +1,22 @@
 <?xml version="1.0"?>
-<package>
-  <name>lexicographic_planning</name>
-  <version>1.0.0</version>
-  <description>A Receding Horizon Planner</description>
+<package format="3">
+  <name>lex_planner</name>
+  <version>0.0.0</version>
+  <description>Example of a Global Planner for ROS2 Navigation2</description>
 
-  <maintainer email="shant@mit.edu">Tixiao Shan</maintainer>
+  <maintainer email="your_email@domain.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
 
-  <license>BSD</license>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <author>Tixiao Shan</author>
+  <depend>rclcpp</depend>
+  <depend>nav2_core</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>pluginlib</depend>
 
-  <buildtool_depend>catkin</buildtool_depend>
-
-  <build_depend>roscpp</build_depend>
-  <run_depend>roscpp</run_depend>
-  <build_depend>rospy</build_depend>
-  <run_depend>rospy</run_depend>
-  <build_depend>ros_bridge</build_depend>
-  <run_depend>ros_bridge</run_depend>
-  
-  <build_depend>tf</build_depend>
-  <run_depend>tf</run_depend>
-
-  <build_depend>pcl_ros</build_depend>
-  <run_depend>pcl_ros</run_depend>
-  <build_depend>pcl_conversions</build_depend>
-  <run_depend>pcl_conversions</run_depend>
-
-  <build_depend>std_msgs</build_depend>
-  <run_depend>std_msgs</run_depend>
-  <build_depend>sensors_msgs</build_depend>
-  <run_depend>sensors_msgs</run_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <run_depend>geometry_msgs</run_depend>
-  <build_depend>nav_msgs</build_depend>
-  <run_depend>nav_msgs</run_depend>
-  <build_depend>visualization_msgs</build_depend>
-  <run_depend>visualization_msgs</run_depend>
-
-  <build_depend>nav_core</build_depend>
-  <run_depend>nav_core</run_depend>
-  <build_depend>pluginlib</build_depend>
-  <run_depend>pluginlib</run_depend>
   <export>
-    <nav_core plugin="${prefix}/src/library/lex_planner_plugin.xml"/>
+    <build_type>ament_cmake</build_type>
   </export>
-  
 </package>

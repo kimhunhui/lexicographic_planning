@@ -1,45 +1,33 @@
 #ifndef _UTILITY_LIDAR_ODOMETRY_H_
 #define _UTILITY_LIDAR_ODOMETRY_H_
 
-#include <ros/ros.h>
-
-#include <std_msgs/Header.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/Joy.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/LaserScan.h>
-#include <sensor_msgs/NavSatFix.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <nav_msgs/Path.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/OccupancyGrid.h>
-#include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
-
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/header.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/joy.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
+#include "sensor_msgs/msg/nav_sat_fix.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "nav_msgs/msg/odometry.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "geometry_msgs/msg/pose_array.hpp"
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/range_image/range_image.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/common/common.h>
-#include <pcl/registration/gicp.h>
-#include <pcl/registration/icp.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl_ros/transforms.h>
-#include <pcl_ros/filters/filter.h>
-#include <pcl_ros/filters/voxel_grid.h>
-#include <pcl_ros/filters/passthrough.h>
-#include <pcl_ros/filters/crop_box.h> 
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/transforms.hpp>
+// 기타 필요한 PCL 관련 헤더
 
-#include <tf/LinearMath/Quaternion.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
- 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -54,35 +42,25 @@
 #include <string>
 #include <limits>
 #include <iomanip>
-#include <array> // c++11
-#include <thread> // c++11
-#include <mutex> // c++11
-
-
-#include <nav_core/base_global_planner.h>
-#include <costmap_2d/costmap_2d_ros.h>
-
-#include "planner/rollout_generator.h"
-
+#include <array>
+#include <thread>
+#include <mutex>
 
 using namespace std;
+using namespace rclcpp;
+using namespace std_msgs::msg;
+using namespace sensor_msgs::msg;
+using namespace nav_msgs::msg;
+using namespace geometry_msgs::msg;
+using namespace visualization_msgs::msg;
 
-extern const int NUM_COSTS = 4;
-
-typedef pcl::PointXYZI PointType;
-struct state_t;
-
-class ParamServer
+class ParamServer : public rclcpp::Node
 {
 public:
-
-    ros::NodeHandle nh;
-
     std::string robot_id;
-
     string _pointCloudTopic;
 
-    //Occupancy Map Params
+    // Occupancy Map Params
     float _mapResolution;
     float _occuMapInflation;
     float _occuMapField;
@@ -105,33 +83,50 @@ public:
     float _rollOutDensity;
     int   _rollOutNumber;
     int   _rollOutCenter;
-    
-    ParamServer()
+
+    ParamServer() : Node("param_server")
     {
-        nh.param<std::string>("/robot_id", robot_id, "roboat");
+        this->declare_parameter<std::string>("robot_id", "roboat");
+        this->get_parameter("robot_id", robot_id);
 
-        nh.param<std::string>("roboat_planning/_pointCloudTopic", _pointCloudTopic, "points_raw");
+        this->declare_parameter<std::string>("_pointCloudTopic", "points_raw");
+        this->get_parameter("_pointCloudTopic", _pointCloudTopic);
 
-        nh.param<float>("roboat_planning/_mapResolution",    _mapResolution,    0.1);
-        nh.param<float>("roboat_planning/_occuMapInflation", _occuMapInflation, 0.5);
-        nh.param<float>("roboat_planning/_occuMapField",     _occuMapField,     0.5);
-
-        nh.param<float>("roboat_planning/_sensorRangeLimitMin",    _sensorRangeLimitMin,    1.0);
-        nh.param<float>("roboat_planning/_sensorRangeLimitMax",    _sensorRangeLimitMax,    30.0);
-        nh.param<float>("roboat_planning/_sensorHeightLimitUpper", _sensorHeightLimitUpper, 0.5);
-        nh.param<float>("roboat_planning/_sensorHeightLimitDown",  _sensorHeightLimitDown,  -0.2);
-        nh.param<float>("roboat_planning/_sensorCloudTimeout",     _sensorCloudTimeout,   25);
-
-
-        nh.param<float>("roboat_planning/_samplingTipMargin", _samplingTipMargin, 1.0);
-        nh.param<float>("roboat_planning/_samplingOutMargin", _samplingOutMargin, 1.0);
-        nh.param<float>("roboat_planning/_pathResolution",    _pathResolution,    0.1);
-        nh.param<float>("roboat_planning/_maxPathDistance",   _maxPathDistance,   10.0);
-        nh.param<float>("roboat_planning/_rollOutDensity",    _rollOutDensity,    0.1);
-        nh.param<int>("roboat_planning/_rollOutNumber",       _rollOutNumber,     20);
+        // Repeat the above pattern for each parameter
+        // Example:
+        this->declare_parameter<float>("_mapResolution", 0.1);
+        this->get_parameter("_mapResolution", _mapResolution);
+        this->declare_parameter<float>("roboat_planning.occuMapInflation", 0.5);
+        this->get_parameter("roboat_planning.occuMapInflation", _occuMapInflation);
+        this->declare_parameter<float>("roboat_planning.occuMapField", 0.5);
+        this->get_parameter("roboat_planning.occuMapField", _occuMapField);
+        this->declare_parameter<float>("roboat_planning.sensorRangeLimitMin", 1.0);
+        this->get_parameter("roboat_planning.sensorRangeLimitMin", _sensorRangeLimitMin);
+        this->declare_parameter<float>("roboat_planning.sensorRangeLimitMax", 30.0);
+        this->get_parameter("roboat_planning.sensorRangeLimitMax", _sensorRangeLimitMax);
+        this->declare_parameter<float>("roboat_planning.sensorHeightLimitUpper", 0.5);
+        this->get_parameter("roboat_planning.sensorHeightLimitUpper", _sensorHeightLimitUpper);
+        this->declare_parameter<float>("roboat_planning.sensorHeightLimitDown", -0.2);
+        this->get_parameter("roboat_planning.sensorHeightLimitDown", _sensorHeightLimitDown);
+        this->declare_parameter<float>("roboat_planning.sensorCloudTimeout", 25.0);
+        this->get_parameter("roboat_planning.sensorCloudTimeout", _sensorCloudTimeout);
+        this->declare_parameter<float>("roboat_planning.samplingTipMargin", 1.0);
+        this->get_parameter("roboat_planning.samplingTipMargin", _samplingTipMargin);
+        this->declare_parameter<float>("roboat_planning.samplingOutMargin", 1.0);
+        this->get_parameter("roboat_planning.samplingOutMargin", _samplingOutMargin);
+        this->declare_parameter<float>("roboat_planning.pathResolution", 0.1);
+        this->get_parameter("roboat_planning.pathResolution", _pathResolution);
+        this->declare_parameter<float>("roboat_planning.maxPathDistance", 10.0);
+        this->get_parameter("roboat_planning.maxPathDistance", _maxPathDistance);
+        this->declare_parameter<float>("roboat_planning.rollOutDensity", 0.1);
+        this->get_parameter("roboat_planning.rollOutDensity", _rollOutDensity);
+        this->declare_parameter<int>("roboat_planning.rollOutNumber", 20);
+        this->get_parameter("roboat_planning.rollOutNumber", _rollOutNumber);
+     
+        // Calculate derived parameters
         _rollOutCenter = _rollOutNumber / 2;
         if (_maxPathDistance < _sensorRangeLimitMax * 2.0)
-            ROS_WARN("Assigned length for generating alternative paths might not be long enough!");
+            RCLCPP_WARN(this->get_logger(), "Assigned length for generating alternative paths might not be long enough!");
 
         _local_map_grid_num = round(_sensorRangeLimitMax * 4.0 / _mapResolution);
         _local_map_length = _sensorRangeLimitMax * 4.0;
@@ -145,26 +140,33 @@ public:
         return pathIn;
     }
 
-    nav_msgs::Path calculatePathYaw(nav_msgs::Path pathIn)
+    nav_msgs::msg::Path calculatePathYaw(nav_msgs::msg::Path pathIn)
     {
         int length = pathIn.poses.size();
         if (length <= 1)
         {
             if (length == 1)
-                pathIn.poses[0].pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
+            {
+                tf2::Quaternion q;
+                q.setRPY(0, 0, 0); // Roll, Pitch, Yaw
+                pathIn.poses[0].pose.orientation = tf2::toMsg(q);
+            }
             return pathIn;
         }
-
+    
         for (int i = 0; i < length - 1; ++i)
         {
             double dx = pathIn.poses[i+1].pose.position.x - pathIn.poses[i].pose.position.x;
             double dy = pathIn.poses[i+1].pose.position.y - pathIn.poses[i].pose.position.y;
             double theta = atan2(dy, dx);
-            pathIn.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+            
+            tf2::Quaternion q;
+            q.setRPY(0, 0, theta); // Roll, Pitch, Yaw
+            pathIn.poses[i].pose.orientation = tf2::toMsg(q);
         }
-
+    
         pathIn.poses.back().pose.orientation = pathIn.poses[length-2].pose.orientation;
-
+    
         return pathIn;
     }
 
@@ -301,15 +303,16 @@ struct neighbor_t{
     }
 };
 
-void publishCloud(ros::Publisher *thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, ros::Time thisStamp, std::string thisFrame)
+void publishCloud(std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::PointCloud2>> thisPub, pcl::PointCloud<PointType>::Ptr thisCloud, rclcpp::Time thisStamp, std::string thisFrame)
 {
-    if (thisPub->getNumSubscribers() == 0)
+    if (thisPub->get_subscription_count() == 0)
         return;
-    sensor_msgs::PointCloud2 tempCloud;
-    pcl::toROSMsg(*thisCloud, tempCloud);
-    tempCloud.header.stamp = thisStamp;
-    tempCloud.header.frame_id = thisFrame;
-    thisPub->publish(tempCloud);
+    
+    auto tempCloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    pcl::toROSMsg(*thisCloud, *tempCloud);
+    tempCloud->header.stamp = thisStamp;
+    tempCloud->header.frame_id = thisFrame;
+    thisPub->publish(*tempCloud);
 }
 
 // coordinate system transform

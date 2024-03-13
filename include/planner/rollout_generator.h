@@ -1,35 +1,19 @@
-/*
- * @Description: 
- * @Author: sunm
- * @Github: https://github.com/sunmiaozju
- * @Date: 2019-02-04 11:13:45
- * @LastEditors: sunm
- * @LastEditTime: 2019-03-15 11:50:55
- */
+#ifndef ROLLOUT_GENERATOR_HPP
+#define ROLLOUT_GENERATOR_HPP
 
-#ifndef ROLLOUT_GENERATOR_H
-#define ROLLOUT_GENERATOR_H
+#include "rclcpp/rclcpp.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "visualization_msgs/msg/marker.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include <mutex>
+#include <memory>
 
-// #include "utils/utils.h"
+using std::placeholders::_1;
 
-
-#include <ros/ros.h>
-#include <tf/tf.h>
-
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/TwistStamped.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-
-#include <tf/transform_listener.h>
-
-using namespace std;
-
-namespace UtilityNS
-{
+namespace UtilityNS {
 
 class GPSPoint {
 public:
@@ -623,12 +607,16 @@ bool getRelativeInfo(const vector<UtilityNS::WayPoint>& trajectory,
 
 
 
-
 namespace RolloutGeneratorNS {
 
-#define LANE_CHANGE_SPEED_FACTOR 0.5
+class RolloutGenerator : public rclcpp::Node {
+public:
+    RolloutGenerator() : Node("rollout_generator") {
+        initROS();
+    }
 
-    class RolloutGenerator {
+    ~RolloutGenerator() {}
+
     private:
         UtilityNS::WayPoint current_pose;
         UtilityNS::WayPoint init_pose;
@@ -639,15 +627,16 @@ namespace RolloutGeneratorNS {
 
         bool currentPose_flag;
 
+        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_global_path;
+        rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_localTrajectoriesRviz;
+        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane;
+        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_center_path;
+        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_remaining_path;
+
         ros::NodeHandle nh;
         ros::NodeHandle nh_private;
 
-        ros::Publisher pub_localTrajectoriesRviz;
-        ros::Publisher pub_testLane;
 
-        ros::Publisher pub_global_path;
-        ros::Publisher pub_center_path;
-        ros::Publisher pub_remaining_path;
 
         UtilityNS::PlanningParams PlanningParams;
         UtilityNS::CAR_BASIC_INFO CarInfo;

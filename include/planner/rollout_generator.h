@@ -603,10 +603,6 @@ bool getRelativeInfo(const vector<UtilityNS::WayPoint>& trajectory,
 } // namespace UtilityNS
 
 
-
-
-
-
 namespace RolloutGeneratorNS {
 
 class RolloutGenerator : public rclcpp::Node {
@@ -614,6 +610,7 @@ public:
     RolloutGenerator() : Node("rollout_generator"), tf_buffer_(std::make_shared<tf2_ros::Buffer>(this->get_clock())) {
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
         initROS();
+        subscribeToTopics();
     }
     private:
         UtilityNS::WayPoint current_pose;
@@ -634,6 +631,8 @@ public:
         ros::NodeHandle nh;
         ros::NodeHandle nh_private;
 
+        std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+        std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
 
         UtilityNS::PlanningParams PlanningParams;

@@ -204,10 +204,8 @@ public:
     double l;
     double h;
 
-    rclcpp::Time start_time = this->now();
-
-    DetectedObject()
-    {
+    rclcpp::Time start_time;
+    DetectedObject() : start_time(rclcpp::Clock().now()) {
         id = 0;
         w = 0;
         l = 0;

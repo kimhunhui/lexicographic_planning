@@ -380,7 +380,9 @@ double cast_from_PI_to_PI_Angle(const double &ang);
 
 double diffBetweenTwoAngle(const double &a1, const double &a2);
 
-void visualLaneInRviz(const vector<UtilityNS::WayPoint> &lane, ros::Publisher pub_testLane);
+//void visualLaneInRviz(const vector<UtilityNS::WayPoint> &lane, ros::Publisher pub_testLane);
+void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane, 
+                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane);
 
 bool getRelativeInfo(const vector<UtilityNS::WayPoint> &trajectory,
                      const UtilityNS::WayPoint &p,
@@ -434,7 +436,8 @@ int getNextClosePointIndex(const vector<UtilityNS::WayPoint>& trajectory,
  * @param {type} 
  * @return: 
  */
-void visualLaneInRviz(const vector<UtilityNS::WayPoint>& lane, ros::Publisher pub_testLane)
+void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane, 
+                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane)
 {
     if (pub_testLane.getNumSubscribers() == 0)
         return;

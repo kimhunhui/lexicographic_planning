@@ -3,6 +3,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "tf2_ros/buffer.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "tf2_ros/transform_listener.h"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -779,7 +780,7 @@ void RolloutGenerator::run(geometry_msgs::msg::TransformStamped transform, nav_m
     current_pose.pos.x = transform.getOrigin().x();
     current_pose.pos.y = transform.getOrigin().y();
     current_pose.pos.z = transform.getOrigin().z();
-    current_pose.pos.yaw = tf::getYaw(transform.getRotation());
+    current_pose.pos.yaw = tf2::getYaw(transform.getRotation());
 
     getGlobalPlannerPath_cb(pathMsg);
 
@@ -1558,7 +1559,7 @@ void RolloutGenerator::msgLane2LocalLane(nav_msgs::Path msg_path, vector<Utility
         wp.pos.x = msg_path.poses[i].pose.position.x;
         wp.pos.y = msg_path.poses[i].pose.position.y;
         wp.pos.z = msg_path.poses[i].pose.position.z;
-        wp.pos.yaw = tf::getYaw(msg_path.poses[i].pose.orientation);
+        wp.pos.yaw = tf2::getYaw(msg_path.poses[i].pose.orientation);
         wp.v = 1;//msg_path.waypoints.at(i).speed_limit;
         // wp.laneId = msg_path.waypoints.at(i).lane_id;
         path.push_back(wp);

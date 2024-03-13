@@ -631,9 +631,6 @@ public:
         rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_center_path;
         rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_remaining_path;
 
-        ros::NodeHandle nh;
-        ros::NodeHandle nh_private;
-
         std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
         std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
@@ -697,14 +694,44 @@ public:
 
 #endif //ROLLOUT_GENERATOR_H
 
-
 namespace RolloutGeneratorNS {
-RolloutGenerator::RolloutGenerator()
-    : nh_private("")
-{
-    initROS();
-    currentPose_flag = false;
-}
+
+class RolloutGenerator : public rclcpp::Node {
+public:
+    RolloutGenerator() : Node("rollout_generator"), currentPose_flag(false)
+    {
+        initROS();
+        currentPose_flag = false;
+    }
+
+private:
+    void initROS() {
+        // 여기에 ROS2 초기화 코드를 작성합니다.
+        // 예: 파라미터 선언, 퍼블리셔 및 서브스크라이버 생성 등
+
+        // 파라미터 선언 예시
+        this->declare_parameter<std::string>("my_parameter", "default_value");
+
+        // 퍼블리셔 생성 예시
+        publisher_ = this->create_publisher<std_msgs::msg::String>("topic_name", 10);
+
+        // 서브스크라이버 생성 예시
+        subscription_ = this->create_subscription<std_msgs::msg::String>(
+            "topic_name", 10, std::bind(&RolloutGenerator::topic_callback, this, std::placeholders::_1));
+    }
+
+    void topic_callback(const std_msgs::msg::String::SharedPtr msg) {
+        // 콜백 함수 구현
+    }
+
+    // 클래스 멤버 변수
+    bool currentPose_flag;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
+};
+
+} // namespace RolloutGeneratorNS
+
 
 RolloutGenerator::~RolloutGenerator()
 {

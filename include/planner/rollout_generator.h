@@ -11,6 +11,8 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <mutex>
 #include <memory>
+#include <string>
+#include <sstream>
 
 using std::placeholders::_1;
 
@@ -206,7 +208,7 @@ public:
     double h;
 
     rclcpp::Time start_time;
-    DetectedObject() : start_time(rclcpp::Clock().now()) {
+    DetectedObject() : start_time(this->get_clock()->now()) {
         id = 0;
         w = 0;
         l = 0;
@@ -686,7 +688,7 @@ public:
         void run(geometry_msgs::msg::TransformStamped transform, nav_msgs::msg::Path pathMsg, nav_msgs::Path& fixedGlobal, nav_msgs::Path& centerPath, nav_msgs::Path& remainingPath, vector<nav_msgs::Path>& alternativePaths);
         void initROS();
 
-        tf::StampedTransform transform;
+        geometry_msgs::msg::TransformStamped transform;
     };
 } // namespace RolloutGeneratorNS
 

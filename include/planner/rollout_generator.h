@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include "tf2/LinearMath/Quaternion.h"
 
 using std::placeholders::_1;
 
@@ -893,7 +894,7 @@ nav_msgs::Path RolloutGenerator::getRemainingPath(nav_msgs::Path pathIn, nav_msg
 nav_msgs::Path RolloutGenerator::getCenterPath(vector<UtilityNS::WayPoint> pathIn)
 {
     nav_msgs::Path pathOut;
-    pathOut.header.stamp = rclcpp::Time;
+    pathOut.header.stamp = this->get_clock()->now();
     pathOut.header.frame_id = "map";
 
     for (int i = 0; i < pathIn.size(); ++i)
@@ -919,7 +920,7 @@ vector<nav_msgs::Path> RolloutGenerator::getOtherpaths(vector<vector<UtilityNS::
     vector<nav_msgs::Path> pathVecOut;
 
     nav_msgs::Path pathOut;
-    pathOut.header.stamp = rclcpp::Time;
+    pathOut.header.stamp = this->get_clock()->now();
     pathOut.header.frame_id = "map";
 
     for (int i = 0; i < pathsIn.size(); ++i)

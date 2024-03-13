@@ -781,7 +781,7 @@ void RolloutGenerator::run(geometry_msgs::msg::TransformStamped transform, nav_m
     current_pose.pos.x = transform.getOrigin().x();
     current_pose.pos.y = transform.getOrigin().y();
     current_pose.pos.z = transform.getOrigin().z();
-    current_pose.pos.yaw = tf2::getYaw(transform.getRotation());
+    current_pose.pos.yaw = tf2::getYaw(transform.transform.rotation);
 
     getGlobalPlannerPath_cb(pathMsg);
 

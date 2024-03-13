@@ -1,48 +1,46 @@
-#include "utility.h"
-// this is a plugin that receives path from global planner and pass it to move_base
-#ifndef lex_planner_CPP
-#define lex_planner_CPP
+// lex_planner.hpp
+#ifndef LEX_PLANNER_HPP
+#define LEX_PLANNER_HPP
+
+#include "rclcpp/rclcpp.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+#include "nav2_core/global_planner.h"
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+#include "nav2_costmap_2d/costmap_2d_ros.hpp"
+#include <mutex>
+#include <memory>
 
 namespace lex_planner {
 
+class LEXPlanner : public nav2_core::GlobalPlanner, public rclcpp::Node {
+public:
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 
-    class LEXPlanner : public nav_core::BaseGlobalPlanner {
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr subPath;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubGoal;
 
-    public:
-        ros::NodeHandle nh;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr subTwistCommand1; // Twist command from move_base
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr subTwistCommand2; // Twist command from move_base
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pubTwistCommand; // Adjust twist command height to show above the robot
 
-        tf::TransformListener listener;
-        tf::StampedTransform transform;
+    nav_msgs::msg::Path globalPath;
 
-        ros::Subscriber subPath;
-        ros::Publisher pubGoal;
+    std::mutex mtx;
 
-        // visualize twist command
-        ros::Subscriber subTwistCommand1; // twist command from move_base
-        ros::Subscriber subTwistCommand2; // twist command from move_base
-        ros::Publisher pubTwistCommand; // adjust twist command height to show above the robot
+    LEXPlanner(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+    void initialize(std::string name, std::shared_ptr<tf2_ros::Buffer> tf, std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros) override;
 
-        nav_msgs::Path globalPath;
+    void pathHandler(const nav_msgs::msg::Path::SharedPtr pathMsg);
+    void twistCommandHandler(const geometry_msgs::msg::Twist::SharedPtr twistMsg);
 
-        std::mutex mtx;
-
-        LEXPlanner(); 
-        LEXPlanner(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
-        /** overridden classes from interface nav_core::BaseGlobalPlanner **/
-        void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
-
-        void pathHandler(const nav_msgs::Path::ConstPtr& pathMsg);
-        // visualize twist command
-        void twistCommandHandler(const nav_msgs::Path::ConstPtr& pathMsg);
-
-        bool makePlan(const geometry_msgs::PoseStamped& start, 
-                        const geometry_msgs::PoseStamped& goal, 
-                        std::vector<geometry_msgs::PoseStamped>& plan);  
-
-    };
-
-
+    bool makePlan(const geometry_msgs::msg::PoseStamped& start, 
+                  const geometry_msgs::msg::PoseStamped& goal, 
+                  std::vector<geometry_msgs::msg::PoseStamped>& plan) override;
 };
 
+} // namespace lex_planner
 
-#endif
+#endif // LEX_PLANNER_HPP

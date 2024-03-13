@@ -1,45 +1,61 @@
 #include "utility.h"
+#include <memory>
+#include <deque>
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "pcl_conversions/pcl_conversions.h"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl/filters/voxel_grid.h"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/create_timer_ros.h"
+#include "pcl_ros/transforms.hpp"
 
-class obstacleServer : public ParamServer
+using namespace std::chrono_literals;
+
+class ObstacleServer : public rclcpp::Node, public ParamServer
 {
 public:
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subLaserCloud;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubSurroundMapCloud;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubSurroundMapCloudDS;
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pubOccupancyMap;
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pubOccupancyMap2;
 
-    tf::TransformListener listener;
-    tf::StampedTransform transform;
-
-    ros::Subscriber subLaserCloud;
-
-    ros::Publisher pubSurroundMapCloud;
-    ros::Publisher pubSurroundMapCloudDS;
-
-    ros::Publisher pubOccupancyMap;
-    ros::Publisher pubOccupancyMap2;
+    std::shared_ptr<tf2_ros::Buffer> tfBuffer;
+    std::shared_ptr<tf2_ros::TransformListener> tfListener;
 
     pcl::PointCloud<PointType>::Ptr surroundMapCloud;
     pcl::PointCloud<PointType>::Ptr surroundMapCloudDS;
-
     pcl::VoxelGrid<PointType> downSizeFilter;
 
-    deque<pcl::PointCloud<PointType>> cloudQueue;
-    deque<double> timeQueue;
+    std::deque<pcl::PointCloud<PointType>> cloudQueue;
+    std::deque<rclcpp::Time> timeQueue;
 
-    nav_msgs::OccupancyGrid occupancyMap2D;
+    nav_msgs::msg::OccupancyGrid occupancyMap2D;
 
-    int count = 0;
-
-
-    obstacleServer()
+    ObstacleServer() : Node("obstacle_server")
     {
-        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("planning/registered_cloud", 1, &obstacleServer::cloudHandler, this);
+        this->declare_parameter<std::string>("point_cloud_topic", "planning/registered_cloud");
 
-        pubSurroundMapCloud = nh.advertise<sensor_msgs::PointCloud2>("planning/obstacle/surround_cloud_map", 1);
-        pubSurroundMapCloudDS = nh.advertise<sensor_msgs::PointCloud2>("planning/obstacle/surround_cloud_map_downsample", 1);
+        std::string point_cloud_topic;
+        this->get_parameter("point_cloud_topic", point_cloud_topic);
+        
+        subLaserCloud = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+            point_cloud_topic, rclcpp::QoS(1), std::bind(&ObstacleServer::cloudHandler, this, _1));
 
-        pubOccupancyMap  = nh.advertise<nav_msgs::OccupancyGrid> ("planning/obstacle/map", 1);
-        pubOccupancyMap2 = nh.advertise<nav_msgs::OccupancyGrid> ("planning/obstacle/map_inflated", 1);
+        pubSurroundMapCloud = this->create_publisher<sensor_msgs::msg::PointCloud2>("planning/obstacle/surround_cloud_map", rclcpp::QoS(1));
+        pubSurroundMapCloudDS = this->create_publisher<sensor_msgs::msg::PointCloud2>("planning/obstacle/surround_cloud_map_downsample", rclcpp::QoS(1));
+        pubOccupancyMap = this->create_publisher<nav_msgs::msg::OccupancyGrid>("planning/obstacle/map", rclcpp::QoS(1));
+        pubOccupancyMap2 = this->create_publisher<nav_msgs::msg::OccupancyGrid>("planning/obstacle/map_inflated", rclcpp::QoS(1));
 
         surroundMapCloud.reset(new pcl::PointCloud<PointType>());
         surroundMapCloudDS.reset(new pcl::PointCloud<PointType>());
+
+        tfBuffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tfListener = std::make_shared<tf2_ros::TransformListener>(*tfBuffer);
 
         downSizeFilter.setLeafSize(_mapResolution, _mapResolution, _mapResolution);
 
@@ -52,7 +68,7 @@ public:
         occupancyMap2D.info.width = _local_map_grid_num;
         occupancyMap2D.info.height = _local_map_grid_num;
         occupancyMap2D.info.resolution = _mapResolution;
-        occupancyMap2D.info.origin.orientation.x = 0.0;
+        occupancyMap2D.info.origintation.x = 0.0;
         occupancyMap2D.info.origin.orientation.y = 0.0;
         occupancyMap2D.info.origin.orientation.z = 0.0;
         occupancyMap2D.info.origin.orientation.w = 1.0;
@@ -183,23 +199,24 @@ public:
 };
 
 
-int main(int argc, char** argv){
+private:
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subLaserCloud;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubSurroundMapCloud;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubSurroundMapCloudDS;
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pubOccupancyMap;
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pubOccupancyMap2;
 
-    ros::init(argc, argv, "lexicographic_planning");
+    std::shared_ptr<tf2_ros::Buffer> tfBuffer;
+    std::shared_ptr<tf2_ros::TransformListener> tfListener;
     
-    obstacleServer os;
+    // More members similar to ROS1 version
+};
 
-    ROS_INFO("\033[1;32m----> lexicographic_planning: Obstacle Server Started.\033[0m");
-
-    ros::Rate rate(10);
-    while (ros::ok())
-    {
-        ros::spinOnce();
-
-        rate.sleep();
-    }
-
-    ros::spin();
-
+int main(int argc, char **argv)
+{
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<ObstacleServer>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
     return 0;
 }

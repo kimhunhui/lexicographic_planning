@@ -43,23 +43,33 @@ public:
 
     RolloutGeneratorNS::RolloutGenerator openPlannerRollOut;
 
-    PathPlanning()
+    PathPlanning() : Node("PathPlanning"), tfBuffer(std::make_shared<rclcpp::Clock>()), tfListener(tfBuffer)
     {
-        subGlobalPath = nh.subscribe<nav_msgs::Path>("planning/server/path_blueprint_smooth", 5, &PathPlanning::pathHandler, this);
-        subObstacleMap = nh.subscribe<nav_msgs::OccupancyGrid>("planning/obstacle/map_inflated", 5, &PathPlanning::mapHandler, this);
+        subGlobalPath = this->create_subscription<nav_msgs::msg::Path>(
+            "planning/server/path_blueprint_smooth", 5,
+            std::bind(&PathPlanning::pathHandler, this, std::placeholders::_1));
 
-        pubPRMGraph = nh.advertise<visualization_msgs::MarkerArray>("planning/planning/prm_graph", 5);
-        pubSingleSourcePaths = nh.advertise<visualization_msgs::MarkerArray>("planning/planning/prm_single_source_paths", 5);
+        subObstacleMap = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
+            "planning/obstacle/map_inflated", 5,
+            std::bind(&PathPlanning::mapHandler, this, std::placeholders::_1));
 
-        pub_delete_openplanner = nh.advertise<visualization_msgs::MarkerArray>("planning/planning/open_planner", 5);
-
-        pubExecutePath = nh.advertise<nav_msgs::Path>("planning/planning/execute_path", 1);
-        pubSearchedPath = nh.advertise<nav_msgs::Path>("planning/planning/searched_path", 1);
+        pubPRMGraph = this->create_publisher<visualization_msgs::msg::MarkerArray>("planning/planning/prm_graph", 5);
+        pubSingleSourcePaths = this->create_publisher<visualization_msgs::msg::MarkerArray>("planning/planning/prm_single_source_paths", 5);
+        pub_delete_openplanner = this->create_publisher<visualization_msgs::msg::MarkerArray>("planning/planning/open_planner", 5);
+        pubExecutePath = this->create_publisher<nav_msgs::msg::Path>("planning/planning/execute_path", 1);
+        pubSearchedPath = this->create_publisher<nav_msgs::msg::Path>("planning/planning/searched_path", 1);
 
         adjacency_width_grid = -1;
         adjacency_length_grid = -1;
 
-        pathUpdateTimer = nh.createTimer(ros::Duration(1.0/10.0), &PathPlanning::updatePath, this);
+        pathUpdateTimer = this->create_wall_timer(
+            std::chrono::milliseconds(100),
+            std::bind(&PathPlanning::updatePath, this));
+
+        tfBuffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tfListener = std::make_shared<tf2_ros::TransformListener>(*tfBuffer);
+
+
     }
 
     void pathHandler(const nav_msgs::Path::ConstPtr& pathMsg)
@@ -678,18 +688,33 @@ public:
 
         publishPath();
     }
+private:
+
+    rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr subGlobalPath;
+    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr subObstacleMap;
+
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pubPRMGraph;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pubSingleSourcePaths;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_delete_openplanner;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubExecutePath;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubSearchedPath;
+
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tfListener;
+
+   rclcpp::TimerBase::SharedPtr pathUpdateTimer;
+
+    int adjacency_width_grid;
+    int adjacency_length_grid;
+
+    // More private members as needed
 };
 
-
-int main(int argc, char** argv){
-
-    ros::init(argc, argv, "lexicographic_planning");
-    
-    PathPlanning pp;
-
-    ROS_INFO("\033[1;32m----> lexicographic_planning: Path Planning Started.\033[0m");
-
-    ros::spin();
-
+int main(int argc, char **argv)
+{
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<PathPlanning>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
     return 0;
 }

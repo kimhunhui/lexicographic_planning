@@ -45,7 +45,7 @@ public:
 
     std::string ToString()
     {
-        stringstream str;
+        std::stringstream str;
         str.precision(12);
         str << "X:" << x << ", Y:" << y << ", Z:" << z << ", Yaw:" << yaw << endl;
         return str.str();

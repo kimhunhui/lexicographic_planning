@@ -201,20 +201,15 @@ public:
 class DetectedObject {
 public:
     int id;
-    string label;
+    std::string label;
     WayPoint center;
-    vector<GPSPoint> contour;
-    double w;
-    double l;
-    double h;
+    std::vector<GPSPoint> contour;
+    double w, l, h;
+    rclcpp::Time start_time; // Use rclcpp::Time directly
 
-    rclcpp::Time start_time;
-    DetectedObject() : start_time(this->get_clock()->now()) {
-        id = 0;
-        w = 0;
-        l = 0;
-        h = 0;
-    }
+    // Modify constructor to accept a rclcpp::Time for start_time initialization
+    DetectedObject(rclcpp::Time start_time)
+    : id(0), w(0), l(0), h(0), start_time(start_time) {}
 };
 
 class TrajectoryCost {

@@ -611,12 +611,10 @@ namespace RolloutGeneratorNS {
 
 class RolloutGenerator : public rclcpp::Node {
 public:
-    RolloutGenerator() : Node("rollout_generator") {
+    RolloutGenerator() : Node("rollout_generator"), tf_buffer_(std::make_shared<tf2_ros::Buffer>(this->get_clock())) {
+        tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
         initROS();
     }
-
-    ~RolloutGenerator() {}
-
     private:
         UtilityNS::WayPoint current_pose;
         UtilityNS::WayPoint init_pose;

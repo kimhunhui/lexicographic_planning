@@ -20,7 +20,7 @@ public:
     double x;
     double y;
     double z;
-    double yaw = tf2::getYaw(msg_path.poses[i].pose.orientation);
+    double yaw;
 
     GPSPoint()
     {

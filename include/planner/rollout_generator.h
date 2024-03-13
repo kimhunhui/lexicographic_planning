@@ -856,7 +856,7 @@ nav_msgs::Path RolloutGenerator::calculatePathYaw(nav_msgs::Path pathIn)
         double dx = pathIn.poses[i+1].pose.position.x - pathIn.poses[i].pose.position.x;
         double dy = pathIn.poses[i+1].pose.position.y - pathIn.poses[i].pose.position.y;
         double theta = atan2(dy, dx);
-        pathIn.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(theta);
+        pathIn.poses[i].pose.orientation = tf2::Quaternion q; q.setRPY(0, 0, theta);
     }
 
     pathIn.poses.back().pose.orientation = pathIn.poses[length-2].pose.orientation;

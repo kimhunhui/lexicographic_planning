@@ -51,8 +51,12 @@ void LEXPlanner::twistCommandHandler(const nav_msgs::msg::Path::SharedPtr path_m
         geometry_msgs::msg::TransformStamped transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
         nav_msgs::msg::Path outTwist = *path_msg;
 
-        for (auto& pose :
-		    pubTwistCommand_->publish(outTwist);
+        for (auto& pose : outTwist.poses) {
+	pose.pose.position.z = transform.transform.translation.z + 1.0;
+	}
+    pubTwistCommand_->publish(outTwist);
 	} catch (tf2::TransformException &ex) {
 	    RCLCPP_ERROR(this->get_logger(), "Could not transform goal to map frame: %s", ex.what());
 	}
+}
+}

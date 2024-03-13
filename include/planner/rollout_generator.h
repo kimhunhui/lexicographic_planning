@@ -42,7 +42,7 @@ public:
         this->yaw = yaw;
     }
 
-    string ToString()
+    std::string ToString()
     {
         stringstream str;
         str.precision(12);

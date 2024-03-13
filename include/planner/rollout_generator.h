@@ -204,7 +204,7 @@ public:
     double l;
     double h;
 
-    ros::Time start_time;
+    rclcpp::Time start_time = this->now();
 
     DetectedObject()
     {
@@ -444,7 +444,7 @@ void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane,
     visualization_msgs::Marker lane_marker;
 
     lane_marker.header.frame_id = "map";
-    lane_marker.header.stamp = ros::Time();
+    lane_marker.header.stamp = rclcpp::Time;
     lane_marker.ns = "test_lane";
     lane_marker.type = visualization_msgs::Marker::LINE_STRIP;
     lane_marker.action = visualization_msgs::Marker::ADD;
@@ -895,13 +895,13 @@ nav_msgs::Path RolloutGenerator::getRemainingPath(nav_msgs::Path pathIn, nav_msg
 nav_msgs::Path RolloutGenerator::getCenterPath(vector<UtilityNS::WayPoint> pathIn)
 {
     nav_msgs::Path pathOut;
-    pathOut.header.stamp = ros::Time();
+    pathOut.header.stamp = rclcpp::Time;
     pathOut.header.frame_id = "map";
 
     for (int i = 0; i < pathIn.size(); ++i)
     {
         geometry_msgs::PoseStamped poseCur;
-        poseCur.header.stamp = ros::Time();
+        poseCur.header.stamp = rclcpp::Time;
         poseCur.header.frame_id = "map";
 
         poseCur.pose.position.x = pathIn[i].pos.x;
@@ -921,7 +921,7 @@ vector<nav_msgs::Path> RolloutGenerator::getOtherpaths(vector<vector<UtilityNS::
     vector<nav_msgs::Path> pathVecOut;
 
     nav_msgs::Path pathOut;
-    pathOut.header.stamp = ros::Time();
+    pathOut.header.stamp = rclcpp::Time;
     pathOut.header.frame_id = "map";
 
     for (int i = 0; i < pathsIn.size(); ++i)
@@ -930,7 +930,7 @@ vector<nav_msgs::Path> RolloutGenerator::getOtherpaths(vector<vector<UtilityNS::
         for (int j = 0; j < pathsIn[i].size(); ++j)
         {
             geometry_msgs::PoseStamped poseCur;
-            poseCur.header.stamp = ros::Time();
+            poseCur.header.stamp = rclcpp::Time;
             poseCur.header.frame_id = "map";
 
             poseCur.pose.position.x = pathsIn[i][j].pos.x;
@@ -951,7 +951,7 @@ void RolloutGenerator::trajectoryToMarkers(const vector<vector<vector<UtilityNS:
 {
     visualization_msgs::Marker lane_waypoint_marker;
     lane_waypoint_marker.header.frame_id = "map";
-    lane_waypoint_marker.header.stamp = ros::Time();
+    lane_waypoint_marker.header.stamp = rclcpp::Time;
     lane_waypoint_marker.ns = "rollouts";
     lane_waypoint_marker.type = visualization_msgs::Marker::LINE_STRIP;
     lane_waypoint_marker.action = visualization_msgs::Marker::ADD;
@@ -977,7 +977,7 @@ void RolloutGenerator::trajectoryToMarkers(const vector<vector<vector<UtilityNS:
     // nodes visualization
     visualization_msgs::Marker markerNode;
     markerNode.header.frame_id = "map";
-    markerNode.header.stamp = ros::Time();
+    markerNode.header.stamp = rclcpp::Time;
     markerNode.ns = "nodes";
     markerNode.action = visualization_msgs::Marker::ADD;
     markerNode.type = visualization_msgs::Marker::SPHERE_LIST;

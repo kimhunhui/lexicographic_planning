@@ -110,10 +110,11 @@ public:
     {
         nh.param<std::string>("/robot_id", robot_id, "roboat");
 
-        nh.param<std::string>("roboat_planning/_pointCloudTopic", _pointCloudTopic, "points_raw");
-
-        nh.param<float>("roboat_planning/_mapResolution",    _mapResolution,    0.1);
-        nh.param<float>("roboat_planning/_occuMapInflation", _occuMapInflation, 0.5);
+        this->declare_parameter<std::string>("_pointCloudTopic", "points_raw");
+        this->get_parameter("_pointCloudTopic", _pointCloudTopic);
+        this->declare_parameter<float>("_mapResolution", 0.1);
+        this->get_parameter("_mapResolution", _mapResolution);
+     
         nh.param<float>("roboat_planning/_occuMapField",     _occuMapField,     0.5);
 
         nh.param<float>("roboat_planning/_sensorRangeLimitMin",    _sensorRangeLimitMin,    1.0);
@@ -129,6 +130,7 @@ public:
         nh.param<float>("roboat_planning/_maxPathDistance",   _maxPathDistance,   10.0);
         nh.param<float>("roboat_planning/_rollOutDensity",    _rollOutDensity,    0.1);
         nh.param<int>("roboat_planning/_rollOutNumber",       _rollOutNumber,     20);
+     
         _rollOutCenter = _rollOutNumber / 2;
         if (_maxPathDistance < _sensorRangeLimitMax * 2.0)
             ROS_WARN("Assigned length for generating alternative paths might not be long enough!");

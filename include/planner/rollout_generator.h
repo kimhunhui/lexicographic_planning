@@ -712,30 +712,37 @@ RolloutGenerator::~RolloutGenerator()
 
 void RolloutGenerator::initROS()
 {
-    nh_private.param<double>("roboat_planning/_samplingTipMargin", PlanningParams.carTipMargin, 1);
-    nh_private.param<double>("roboat_planning/_samplingOutMargin", PlanningParams.rollInMargin, 1);
-    nh_private.param<double>("roboat_planning/_samplingSpeedFactor", PlanningParams.rollInSpeedFactor, 0.25);
+    this->declare_parameter("roboat_planning.samplingTipMargin", 1.0);
+    this->declare_parameter("roboat_planning.samplingOutMargin", 1.0);
+    this->declare_parameter("roboat_planning.samplingSpeedFactor", 0.25);
+    this->declare_parameter("roboat_planning.pathResolution", 0.1);
+    this->declare_parameter("roboat_planning.maxPathDistance", 10.0);
+    this->declare_parameter("roboat_planning.rollOutDensity", 0.1);
+    this->declare_parameter("roboat_planning.rollOutNumber", 20);
+    this->declare_parameter("roboat_planning.smoothingDataWeight", 0.45);
+    this->declare_parameter("roboat_planning.smoothingSmoothWeight", 0.4);
+    this->declare_parameter("roboat_planning.smoothingToleranceError", 0.05);
+    this->declare_parameter("roboat_planning.speedProfileFactor", 1.2);
 
-    nh_private.param<double>("roboat_planning/_pathResolution", PlanningParams.pathDensity, 0.1);
-    nh_private.param<double>("roboat_planning/_maxPathDistance", PlanningParams.microPlanDistance, 10.0);
+    this->get_parameter("roboat_planning.samplingTipMargin", PlanningParams.carTipMargin);
+    this->get_parameter("roboat_planning.samplingOutMargin", PlanningParams.rollInMargin);
+    this->get_parameter("roboat_planning.samplingSpeedFactor", PlanningParams.rollInSpeedFactor);
+    this->get_parameter("roboat_planning.pathResolution", PlanningParams.pathDensity);
+    this->get_parameter("roboat_planning.maxPathDistance", PlanningParams.microPlanDistance);
+    this->get_parameter("roboat_planning.rollOutDensity", PlanningParams.rollOutDensity);
+    this->get_parameter("roboat_planning.rollOutNumber", PlanningParams.rollOutNumber);
+    this->get_parameter("roboat_planning.smoothingDataWeight", PlanningParams.smoothingDataWeight);
+    this->get_parameter("roboat_planning.smoothingSmoothWeight", PlanningParams.smoothingSmoothWeight);
+    this->get_parameter("roboat_planning.smoothingToleranceError", PlanningParams.smoothingToleranceError);
+    this->get_parameter("roboat_planning.speedProfileFactor", PlanningParams.speedProfileFactor);
+    
+    pub_localTrajectoriesRviz = this->create_publisher<visualization_msgs::msg::MarkerArray>("planning/op/rollouts_all", 1);
+    pub_testLane = this->create_publisher<visualization_msgs::msg::Marker>("planning/op/rollouts_center", 1);
+    pub_global_path = this->create_publisher<nav_msgs::msg::Path>("planning/op/global_path", 1);
+    pub_center_path = this->create_publisher<nav_msgs::msg::Path>("planning/op/center_path", 1);
+    pub_remaining_path = this->create_publisher<nav_msgs::msg::Path>("planning/op/remaining_path", 1);
 
-    nh_private.param<double>("roboat_planning/_rollOutDensity", PlanningParams.rollOutDensity, 0.1);
-    nh_private.param<int>("roboat_planning/_rollOutNumber", PlanningParams.rollOutNumber, 20);
-
-    nh_private.param<double>("roboat_planning/_smoothingDataWeight", PlanningParams.smoothingDataWeight, 0.45);
-    nh_private.param<double>("roboat_planning/_smoothingSmoothWeight", PlanningParams.smoothingSmoothWeight, 0.4);
-    nh_private.param<double>("roboat_planning/_smoothingToleranceError", PlanningParams.smoothingToleranceError, 0.05);
-
-    nh_private.param<double>("roboat_planning/_speedProfileFactor", PlanningParams.speedProfileFactor, 1.2);
-
-    pub_localTrajectoriesRviz = nh.advertise<visualization_msgs::MarkerArray>("planning/op/rollouts_all", 1);
-    pub_testLane = nh.advertise<visualization_msgs::Marker>("planning/op/rollouts_center", 1);
-
-    pub_global_path = nh.advertise<nav_msgs::Path>("planning/op/global_path", 1);
-    pub_center_path = nh.advertise<nav_msgs::Path>("planning/op/center_path", 1);
-    pub_remaining_path = nh.advertise<nav_msgs::Path>("planning/op/remaining_path", 1);
-
-    speed = 1;
+    speed = 1.0;
 }
 
 /**

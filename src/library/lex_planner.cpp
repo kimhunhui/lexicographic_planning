@@ -1,73 +1,58 @@
-#include <pluginlib/class_list_macros.h>
-#include "planner/lex_planner.h"
-#include <unistd.h>
+#include "lex_planner/lex_planner.hpp"
+#include "pluginlib/class_list_macros.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
-//register this planner as a BaseLEXPlanner plugin
-PLUGINLIB_EXPORT_CLASS(lex_planner::LEXPlanner, nav_core::BaseGlobalPlanner)
- 
-	
 namespace lex_planner {
 
-	LEXPlanner::LEXPlanner (){}
+LEXPlanner::LEXPlanner() : Node("lex_planner"), tf_buffer_(std::make_shared<tf2_ros::Buffer>(this->get_clock())) {
+    tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+}
 
-	LEXPlanner::LEXPlanner(const std::string name, costmap_2d::Costmap2DROS* costmap_ros){
-		initialize(name, costmap_ros);
-	}
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	// Initialize the Plugin
-	void LEXPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros){
-		// initialize subscriptions
-		subPath = nh.subscribe("planning/planning/execute_path", 5, &LEXPlanner::pathHandler, this);
-		// subPath = nh.subscribe("planning/server/path_blueprint_smooth", 5, &LEXPlanner::pathHandler, this);
-		// visualize twist command
-		subTwistCommand1 = nh.subscribe<nav_msgs::Path>("/move_base/TrajectoryPlannerROS/local_plan", 5, &LEXPlanner::twistCommandHandler, this);
-		subTwistCommand2 = nh.subscribe<nav_msgs::Path>("/move_base/DWAPlannerROS/local_plan", 5, &LEXPlanner::twistCommandHandler, this);
-		// Publisher
-        pubTwistCommand = nh.advertise<nav_msgs::Path>("/twist_command", 5);
-	}
+void LEXPlanner::configure(const rclcpp_lifecycle::LifecycleNode::WeakPtr& parent, std::string name, std::shared_ptr<tf2_ros::Buffer> tf, std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros) {
+    subPath_ = this->create_subscription<nav_msgs::msg::Path>("planning/planning/execute_path", 5, std::bind(&LEXPlanner::pathHandler, this, std::placeholders::_1));
+    pubTwistCommand_ = this->create_publisher<nav_msgs::msg::Path>("/twist_command", 5);
+}
 
-	// visualize twist command
-	void LEXPlanner::twistCommandHandler(const nav_msgs::Path::ConstPtr& pathMsg){
+void LEXPlanner::cleanup() {
+    subPath_.reset();
+    pubTwistCommand_.reset();
+}
 
-		try{ listener.lookupTransform("map","base_link", ros::Time(0), transform); } 
-        catch (tf::TransformException ex){ return; }
+void LEXPlanner::activate() {
+    // Activate publishers
+    pubTwistCommand_->on_activate();
+}
 
-        nav_msgs::Path outTwist = *pathMsg;
+void LEXPlanner::deactivate() {
+    // Deactivate publishers
+    pubTwistCommand_->on_deactivate();
+}
 
-        for (int i = 0; i < outTwist.poses.size(); ++i)
-            outTwist.poses[i].pose.position.z = transform.getOrigin().z() + 1.0;
-
-        pubTwistCommand.publish(outTwist);
+nav_msgs::msg::Path LEXPlanner::createPlan(const geometry_msgs::msg::PoseStamped& start, const geometry_msgs::msg::PoseStamped& goal) {
+    nav_msgs::msg::Path plan;
+    if (globalPath_.poses.empty()) {
+        RCLCPP_INFO(this->get_logger(), "No valid path found.");
+        return plan;
     }
 
-    // receive path from prm global planner
-	void LEXPlanner::pathHandler(const nav_msgs::Path::ConstPtr& pathMsg){
-		// std::lock_guard<std::mutex> lock(mtx);
-		// if the planner couldn't find a feasible path, pose size should be 0
-		globalPath = *pathMsg;
+    RCLCPP_INFO(this->get_logger(), "A Valid Path Received!");
+    plan = globalPath_;
+    plan.poses.back().pose.orientation = goal.pose.orientation;
+
+    return plan;
+}
+
+void LEXPlanner::pathHandler(const nav_msgs::msg::Path::SharedPtr path_msg) {
+    globalPath_ = *path_msg;
+}
+
+void LEXPlanner::twistCommandHandler(const nav_msgs::msg::Path::SharedPtr path_msg) {
+    try {
+        geometry_msgs::msg::TransformStamped transform = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+        nav_msgs::msg::Path outTwist = *path_msg;
+
+        for (auto& pose :
+		    pubTwistCommand_->publish(outTwist);
+	} catch (tf2::TransformException &ex) {
+	    RCLCPP_ERROR(this->get_logger(), "Could not transform goal to map frame: %s", ex.what());
 	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	bool LEXPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,  std::vector<geometry_msgs::PoseStamped>& plan)
-	{
-		// 2. if the planner couldn't find a feasible path, pose size should be 0
-		if (globalPath.poses.size() == 0){
-			return false;
-		}
-		ROS_INFO("A Valid Path Received!");
-
-		// 3. Extract Path
-		geometry_msgs::PoseStamped this_pos = goal;
-		for (int i = 0; i < globalPath.poses.size(); ++i){
-			this_pos = globalPath.poses[i];
-			plan.push_back(this_pos);
-		}
-
-		plan.back().pose.orientation = goal.pose.orientation;
-
-		// globalPath.poses.clear();
-
-		return true; 
-	}
-
-};

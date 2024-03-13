@@ -3,10 +3,11 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "tf2_ros/buffer.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include "tf2_ros/transform_listener.h"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include <geometry_msgs/msg/quaternion.hpp>
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include <mutex>
@@ -443,7 +444,8 @@ int getNextClosePointIndex(const vector<UtilityNS::WayPoint>& trajectory,
  * @return: 
  */
 void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane, 
-                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane) {
+                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane,
+                      rclcpp::Time time); {
     if (pub_testLane->get_subscription_count() == 0) // ROS2에서는 getNumSubscribers 대신 get_subscription_count() 사용
         return;
     visualization_msgs::msg::Marker lane_marker;
@@ -860,7 +862,9 @@ nav_msgs::Path RolloutGenerator::calculatePathYaw(nav_msgs::Path pathIn)
         double dx = pathIn.poses[i+1].pose.position.x - pathIn.poses[i].pose.position.x;
         double dy = pathIn.poses[i+1].pose.position.y - pathIn.poses[i].pose.position.y;
         double theta = atan2(dy, dx);
-        pathIn.poses[i].pose.orientation = tf2::Quaternion q; q.setRPY(0, 0, theta);
+        tf2::Quaternion q;
+        q.setRPY(0, 0, theta);
+        pathIn.poses[i].pose.orientation = tf2::toMsg(q); // tf2에서 제공하는 toMsg 함수 사용
     }
 
     pathIn.poses.back().pose.orientation = pathIn.poses[length-2].pose.orientation;
@@ -1444,7 +1448,7 @@ void RolloutGenerator::extractPartFromTrajectory(const vector<UtilityNS::WayPoin
                   << "[loacal_planner_node] Extracted Rollout Path is too Small, Size = " << extractedPath.size() << endl;
         return;
     }
-    UtilityNS::visualLaneInRviz(extractedPath, pub_testLane);
+    UtilityNS::visualLaneInRviz(extractedPath, pub_testLane, this->get_clock()->now());
     fixPathDensity(extractedPath, waypointDensity);
     calcAngleAndCost(extractedPath);
 }

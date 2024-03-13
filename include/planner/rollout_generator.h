@@ -389,7 +389,8 @@ double diffBetweenTwoAngle(const double &a1, const double &a2);
 
 //void visualLaneInRviz(const vector<UtilityNS::WayPoint> &lane, ros::Publisher pub_testLane);
 void visualLaneInRviz(const std::vector<UtilityNS::WayPoint> &lane, 
-                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane);
+                      rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_testLane,
+                      rclcpp::Time time);
 
 bool getRelativeInfo(const vector<UtilityNS::WayPoint> &trajectory,
                      const UtilityNS::WayPoint &p,

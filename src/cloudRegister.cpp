@@ -1,127 +1,106 @@
 #include "utility.h"
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "pcl_conversions/pcl_conversions.h"
+#include "pcl/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl/filters/voxel_grid.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+#include "pcl_ros/transforms.hpp"
 
-class CloudRegister : public ParamServer
+using std::placeholders::_1;
+
+class CloudRegister : public rclcpp::Node, public ParamServer
 {
-
 public:
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubLaserCloud;
+    rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subLaserCloud;
 
-    ros::Publisher pubLaserCloud;
-    ros::Subscriber subLaserCloud;
-
-    tf::TransformListener listener;
-    tf::StampedTransform transform;
+    std::shared_ptr<tf2_ros::Buffer> tfBuffer;
+    std::shared_ptr<tf2_ros::TransformListener> tfListener;
 
     bool newCloudFlag;
-    std_msgs::Header cloudHeader;
+    std_msgs::msg::Header cloudHeader;
 
     pcl::PointCloud<PointType>::Ptr laserCloudIn;
-    
-
     pcl::VoxelGrid<PointType> downSizeFilter;
 
-    CloudRegister()
+    CloudRegister() : Node("cloud_register")
     {
-        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(_pointCloudTopic, 1, &CloudRegister::cloudHandler, this);
-        pubLaserCloud = nh.advertise<sensor_msgs::PointCloud2>("planning/registered_cloud", 1);
+        pubLaserCloud = this->create_publisher<sensor_msgs::msg::PointCloud2>("planning/registered_cloud", 10);
+        subLaserCloud = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+            _pointCloudTopic, 10, std::bind(&CloudRegister::cloudHandler, this, _1));
+
+        tfBuffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+        tfListener = std::make_shared<tf2_ros::TransformListener>(*tfBuffer);
 
         newCloudFlag = false;
         laserCloudIn.reset(new pcl::PointCloud<PointType>());
-
         downSizeFilter.setLeafSize(_mapResolution, _mapResolution, _mapResolution);
     }
 
-    void cloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg)
+    void cloudHandler(const sensor_msgs::msg::PointCloud2::SharedPtr laserCloudMsg)
     {
-        if (pubLaserCloud.getNumSubscribers() == 0)
+        if (pubLaserCloud->get_subscription_count() == 0)
             return;
 
-        try{
-            listener.waitForTransform("map", "base_link", laserCloudMsg->header.stamp, ros::Duration(1.0));
-            listener.lookupTransform("map", "base_link", laserCloudMsg->header.stamp, transform);
-        } 
-        catch (tf::TransformException ex){
+        geometry_msgs::msg::TransformStamped transform;
+        try
+        {
+            transform = tfBuffer->lookupTransform("map", "base_link", tf2::TimePointZero);
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not transform %s to %s: %s", "base_link", "map", ex.what());
             return;
         }
 
         cloudHeader = laserCloudMsg->header;
-
         pcl::fromROSMsg(*laserCloudMsg, *laserCloudIn);
-
         newCloudFlag = true;
     }
 
     void run()
     {
-        if (newCloudFlag == false)
+        if (!newCloudFlag)
         {
-            // publish empty cloud to keep the program running
-            pcl::PointCloud<PointType>::Ptr emptyCloud(new pcl::PointCloud<PointType>());
-            publishCloud(&pubLaserCloud, emptyCloud, cloudHeader.stamp, "map");
             return;
         }
 
-        // get robot position
-        PointType robotPoint;
-        robotPoint.x = transform.getOrigin().x();
-        robotPoint.y = transform.getOrigin().y();
-        robotPoint.z = transform.getOrigin().z();
-
-        // transform cloud
-        laserCloudIn->header.frame_id = "base_link";
-        laserCloudIn->header.stamp = 0;
+        // Transform cloud to global frame
         pcl::PointCloud<PointType>::Ptr laserCloudInGlobal(new pcl::PointCloud<PointType>());
-        pcl_ros::transformPointCloud("map", *laserCloudIn, *laserCloudInGlobal, listener);
+        pcl_ros::transformPointCloud("map", *laserCloudIn, *laserCloudInGlobal, *tfBuffer);
 
-        // down-sample cloud
+        // Downsample cloud
         pcl::PointCloud<PointType>::Ptr laserCloudInDS(new pcl::PointCloud<PointType>());
         downSizeFilter.setInputCloud(laserCloudInGlobal);
         downSizeFilter.filter(*laserCloudInDS);
 
-        // filter cloud
-        pcl::PointCloud<PointType>::Ptr laserCloudFiltered(new pcl::PointCloud<PointType>());
-        for (int i = 0; i < laserCloudInDS->size(); ++i)
-        {
-            PointType p;
-            p.x = laserCloudInDS->points[i].x;
-            p.y = laserCloudInDS->points[i].y;
-            p.z = laserCloudInDS->points[i].z;
-            p.intensity = laserCloudInDS->points[i].intensity;
+        // Convert to ROS message and publish
+        sensor_msgs::msg::PointCloud2 output;
+        pcl::toROSMsg(*laserCloudInDS, output);
+        output.header.stamp = this->get_clock()->now();
+        output.header.frame_id = "map";
 
-            if (p.z > _sensorHeightLimitUpper + robotPoint.z || p.z < _sensorHeightLimitDown + robotPoint.z)
-                continue;
-
-            float range = pointDistance(p, robotPoint);
-            if (range < _sensorRangeLimitMin || range > _sensorRangeLimitMax)
-                continue;
-
-            laserCloudFiltered->push_back(p);
-        }
-
-        // publish filtered cloud
-        publishCloud(&pubLaserCloud, laserCloudFiltered, cloudHeader.stamp, "map");
-
+        pubLaserCloud->publish(output);
         newCloudFlag = false;
     }
 };
 
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "lexicographic_planning");
-    
-    ROS_INFO("\033[1;32m----> lexicographic_planning: Cloud Register Started.\033[0m");
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<CloudRegister>();
+    rclcpp::Rate rate(3);
 
-    CloudRegister cr;
-
-    ros::Rate r(3);
-    while (ros::ok())
+    while (rclcpp::ok())
     {
-        ros::spinOnce();
-
-        cr.run();
-
-        r.sleep();
+        rclcpp::spin_some(node);
+        node->run();
+        rate.sleep();
     }
 
+    rclcpp::shutdown();
     return 0;
 }
